@@ -70,13 +70,13 @@ cd web && npm install && DEMO_PASSWORD=retriever-demo npm run dev
 
 Open http://localhost:3000 and sign in with `retriever-demo`.
 
-Tests:
+Automated tests:
 
 ```bash
 .venv/bin/pytest api/tests -q
 ```
 
-Eleven tests cover the currency guard, tier 2’s single-candidate rule, SG/MY fallback, signatures, exact match, duplicate and bad webhooks, the review queue, a Stripe decline that becomes a PayNow rescue and then a recovery, partial payment plus overpayment, and approval-gated refunds.
+The suite stays offline. HitPay and Stripe are represented by signed fixtures, not live calls. The cases rewritten from the 23–24 Nov sandbox sessions are below. The rest cover the currency guard, tier 2, SG/MY fallback, the review queue, partial payment, overpayment, and approval-gated refunds.
 
 ## Environment
 
@@ -86,27 +86,78 @@ See `.env.example`. Secrets stay in `.env`.
 |---|---|
 | `DATABASE_URL` | Postgres URL, SQLAlchemy + psycopg |
 | `DRY_RUN` | `true` skips outbound HitPay writes |
-| `HITPAY_API_KEY`, `HITPAY_WEBHOOK_SALT`, `HITPAY_API_BASE` | Sandbox REST and the assumed HMAC salt |
-| `STRIPE_WEBHOOK_SECRET` | Verifies `Stripe-Signature` (`t=`, `v1=` HMAC-SHA256) |
+| `HITPAY_API_KEY`, `HITPAY_WEBHOOK_SALT`, `HITPAY_API_BASE` | Sandbox REST. The salt is the webhook endpoint salt, HMAC-SHA256 over the raw body |
+| `STRIPE_WEBHOOK_SECRET` | The `whsec_…` printed by the current `stripe listen` session |
 | `XAI_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL` | Grok via the OpenAI-compatible xAI API. Empty key uses rules |
 | `DEMO_PASSWORD` | Shared password for the dashboard cookie |
 | `CHURN_AFTER_DAYS` | Default 7 |
 
-## Demo path (no live providers)
+## Sandbox sessions: HitPay and Stripe
 
-1. Create `INV-104` for S$420 on the Invoices page.
-2. Post a Stripe `payment_intent.payment_failed` fixture (see `api/tests/test_ledger.py`). The rescue sheet shows a PayNow message.
-3. Post a HitPay `completed` body with no reference. The Queue page asks for one approval.
-4. `POST /api/forecast` after `ingest_hitpay_snapshot` sets a low opening balance. A discount approval appears only when the discount is cheaper than the gap.
+These are the runs that actually worked on this machine. Custom Payment Method ids are not part of either path. `STRIPE_CPM_*` can stay empty.
 
-The three-minute video, the email to ria@hit-pay.com, and the live HitPay MCP login are still Phase 4 and were not done here.
+### HitPay PayNow, SGD 420.00
+
+The dashboard form rejects `http://127.0.0.1:8000/webhooks/hitpay`. `@hit-pay/cli` is also not on npm yet (`npm i -g @hit-pay/cli` returns 404). Install the CLI from source, then let `listen` register the public HTTPS tunnel:
+
+```bash
+git clone https://github.com/hit-pay/cli.git /tmp/hitpay-cli
+cd /tmp/hitpay-cli && npm install && npm run build && npm link
+hitpay login --api-key "$HITPAY_API_KEY"
+hitpay whoami    # environment must say sandbox
+```
+
+The published `listen` command posts `{url, events}` and the sandbox answers `HITPAY_422`: `name` and `event_types` are required. The copy in `/tmp/hitpay-cli` was patched to send `name` plus `event_types` (`payment_request.completed`, `payment_request.failed`, `charge.created`, `charge.updated`). Rebuild with `npm run build` after that patch.
+
+Start the API, then the tunnel, in two terminals:
+
+```bash
+cd /Users/apple/Retriever
+.venv/bin/uvicorn app.main:app --app-dir api --host 127.0.0.1 --port 8000
+
+hitpay listen --forward-to http://127.0.0.1:8000/webhooks/hitpay
+```
+
+Copy the printed salt into `HITPAY_WEBHOOK_SALT` and start uvicorn again. A completed PayNow page is not enough on its own. One SGD 420.00 receipt (`a34baeee-9dba-4b81-878d-85c719394793`) stayed unpaid in Retriever because the webhook signature did not match and the API returned 401. After the salt matches, `POST /webhooks/hitpay` returns 200 and `INV-104` becomes `paid`.
+
+Sandbox method name: send `paynow_online`, not `paynow`. This account also rejects a methods array that includes GrabPay or ShopeePay, so the request sends only the chosen fallback. `DRY_RUN=false` is what created the real checkout URL (`https://checkout.sandbox.hit-pay.com/...`). `DRY_RUN=true` stores a synthetic URL instead.
+
+### Stripe decline card to PayNow
+
+Card `4000 0000 0000 0002` is the generic decline. This Stripe CLI requires an event list:
+
+```bash
+stripe login
+stripe listen --events payment_intent.payment_failed --forward-to http://127.0.0.1:8000/webhooks/stripe
+```
+
+Put that session’s `whsec_…` in `STRIPE_WEBHOOK_SECRET` and restart uvicorn. Create `INV-104` for S$420.00 first. The webhook reads `metadata.reference`.
+
+```bash
+stripe payment_intents create \
+  --amount=42000 \
+  --currency=sgd \
+  --confirm \
+  --payment-method-data[type]=card \
+  --payment-method-data[card][number]=4000000000000002 \
+  --payment-method-data[card][exp_month]=12 \
+  --payment-method-data[card][exp_year]=2034 \
+  --payment-method-data[card][cvc]=123 \
+  -d "metadata[reference]=INV-104"
+```
+
+The API log should show `POST /webhooks/stripe` 200. `/rescues` then shows an `offered` row whose message contains a PayNow link for `INV-104`. Paying that link is the HitPay session above. `GET /v1/models` 404 lines in the API log are unrelated probes and can be ignored.
+
+`test_stripe_decline_card_creates_paynow_rescue` and `test_unsigned_hitpay_webhook_does_not_mark_paid` in `api/tests/test_ledger.py` cover the same two outcomes without calling either provider.
+
+The three-minute video, the email to ria@hit-pay.com, and the live HitPay MCP login are still open.
 
 ## Challenges
 
 The full table is [CHALLENGES.md](CHALLENGES.md). The ones that change how you read this code:
 
 - The previous progress note claimed a finished scaffold. It was not in the folder.
-- HitPay’s HMAC algorithm is implemented as SHA-256 until a real `hitpay trigger` payload says otherwise.
+- HitPay event webhooks are HMAC-SHA256 over the raw body with that endpoint’s salt. A mismatched salt returns 401 and leaves the invoice unpaid.
 - Job processing runs inside the webhook request so a single process can complete a flow.
 - Overpayments and the refund’s approval pointer do not fit the approval kinds and insert order in the spec; the event log and a payment-id subject are the stand-ins.
 - Phase 5 (supplier bank-detail changes and recurring-charge rescue) is not migrated yet.

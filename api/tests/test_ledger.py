@@ -43,7 +43,7 @@ def test_exact_reference_marks_invoice_paid(db, settings):
             "amount": "420.00",
             "currency": "SGD",
             "reference_number": "INV-104",
-            "payment_method": "paynow",
+            "payment_method": "paynow_online",
             "payer_name": "Tan Wei",
         }
     ).encode()
@@ -85,7 +85,26 @@ def test_unreferenced_payment_goes_to_queue(db, settings):
     assert status == "partially_paid"
 
 
-def test_stripe_decline_creates_paynow_rescue(db, settings):
+def test_unsigned_hitpay_webhook_does_not_mark_paid(db, settings):
+    """A completed PayNow page is not a paid invoice until the signature matches."""
+    _invoice(db, settings)
+    body = json.dumps(
+        {
+            "id": "a34baeee-9dba-4b81-878d-85c719394793",
+            "status": "completed",
+            "amount": "420.00",
+            "currency": "SGD",
+            "reference_number": "INV-104",
+            "payment_method": "paynow_online",
+        }
+    ).encode()
+    assert accept_webhook(db, settings, "hitpay", body, "not-the-endpoint-salt")[0] == 401
+    assert scalar(db, "SELECT status FROM invoices WHERE ref = 'INV-104'") == "issued"
+    assert scalar(db, "SELECT count(*) FROM payments") == 0
+
+
+def test_stripe_decline_card_creates_paynow_rescue(db, settings):
+    """Card 4000000000000002 is a generic decline. metadata.reference ties it to the invoice."""
     _invoice(db, settings)
     body = json.dumps(
         {
