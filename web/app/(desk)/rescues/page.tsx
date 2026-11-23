@@ -1,4 +1,4 @@
-import { api } from "../../lib/api";
+import { api } from "../../../lib/api";
 
 type Rescue = { id: string; status: string; amount_minor: number; currency: string; message_draft: string | null };
 

@@ -1,4 +1,4 @@
-import { api } from "../../lib/api";
+import { api } from "../../../lib/api";
 
 type EventRow = { occurred_at: string; actor: string; type: string; reason: string };
 

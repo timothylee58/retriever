@@ -21,13 +21,13 @@ export default function LoginPage() {
   }
 
   return (
-    <>
+    <main>
       <h1>Owner sign-in</h1>
       <form onSubmit={onSubmit}>
         <label>Shared demo password <input name="password" type="password" required /></label>
         <p><button type="submit">Enter</button></p>
       </form>
       {error ? <p>{error}</p> : null}
-    </>
+    </main>
   );
 }

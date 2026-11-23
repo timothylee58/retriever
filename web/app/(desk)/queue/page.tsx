@@ -1,4 +1,4 @@
-import { api } from "../../lib/api";
+import { api } from "../../../lib/api";
 
 type Item = { id: string; kind: string; summary: string; status: string; payer_name: string | null };
 
