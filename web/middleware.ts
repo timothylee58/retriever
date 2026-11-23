@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/login")) {
+  const path = request.nextUrl.pathname;
+  if (path === "/" || path.startsWith("/login")) {
     return NextResponse.next();
   }
   const expected = process.env.DEMO_PASSWORD ?? "retriever-demo";
