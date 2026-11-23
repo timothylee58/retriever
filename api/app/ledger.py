@@ -16,6 +16,8 @@ from app.llm import suggest_match
 from app.signatures import hitpay_valid, stripe_valid
 
 MONEY = {"SGD": "S$", "MYR": "RM"}
+# HitPay rejects the short names. paynow is paynow_online on the sandbox.
+_HITPAY_METHOD = {"paynow": "paynow_online", "duitnow": "duitnow_online"}
 METHOD_LABEL = {
     "paynow": "PayNow",
     "duitnow": "DuitNow",
@@ -167,7 +169,9 @@ def _create_payment_request(conn, settings: Settings, **kwargs) -> dict:
                 "amount": f"{kwargs['amount_minor'] / 100:.2f}",
                 "currency": kwargs["currency"],
                 "reference_number": kwargs["ref"],
-                "payment_methods": kwargs["methods"],
+                # The sandbox rejects grabpay and shopeepay on this account.
+                # Send the chosen fallback only.
+                "payment_methods": [_HITPAY_METHOD.get(kwargs["methods"][0], kwargs["methods"][0])],
             },
             timeout=20,
         )
