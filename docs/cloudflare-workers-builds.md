@@ -25,6 +25,16 @@ Do **not** set Root directory to `web/`. That is the Next.js dashboard, not the 
 
 ## After the static-files error is gone
 
-The API image still has to push to Cloudflare’s container registry. That step returned **401 Unauthorized** on this account unless the account is on the **Workers Paid** plan ($5/month). Containers are listed as N/A on the Free plan.
+A successful build still fails at:
 
-The Neon database in Singapore already has the Retriever schema. It is separate from this Workers Builds error.
+```text
+A request to the Cloudflare API (.../containers/me) failed
+```
+
+That call is the Containers product. On the **Free** plan Containers are **N/A**. Enable **Workers Paid** ($5/month) on the account, then retry the deploy:
+
+https://dash.cloudflare.com/?to=/:account/workers/plans
+
+The Worker name in `workers/retriever-api/wrangler.jsonc` must match the Cloudflare project name (`retriever`). A mismatch only warns; missing Containers entitlement fails the deploy.
+
+The Neon database in Singapore already has the Retriever schema. It is separate from this error.

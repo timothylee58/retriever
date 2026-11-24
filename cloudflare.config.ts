@@ -1,14 +1,14 @@
 import { bindings, defineConfig, defineContainer, defineWorker, exports } from "@cloudflare/config";
 
 const apiImage = defineContainer({
-  name: "retriever-api",
+  name: "retriever",
   image: { dockerfile: "./Dockerfile" },
 });
 
 export default defineConfig({
   containers: [apiImage],
   worker: defineWorker({
-    name: "retriever-api",
+    name: "retriever",
     entrypoint: "./workers/retriever-api/src/index.ts",
     compatibilityDate: "2026-11-24",
     exports: {
@@ -19,7 +19,7 @@ export default defineConfig({
     },
     env: {
       RETRIEVER_API: bindings.durableObject({
-        worker: "retriever-api",
+        worker: "retriever",
         exportName: "RetrieverApi",
       }),
       DATABASE_URL: bindings.secret(),
