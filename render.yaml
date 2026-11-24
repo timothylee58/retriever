@@ -1,4 +1,4 @@
-# Retriever API on Render (Docker). Neon is external — set DATABASE_URL in the dashboard.
+# Retriever on Render. Neon is external — set secrets in the dashboard.
 services:
   - type: web
     name: retriever-api
@@ -38,3 +38,18 @@ services:
         value: grok-4-fast
       - key: LLM_BASE_URL
         value: https://api.x.ai/v1
+
+  - type: web
+    name: retriever-web
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: cd web && npm install && npm run build
+    startCommand: cd web && npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://retriever-api-mifm.onrender.com
+      - key: DEMO_PASSWORD
+        sync: false
+
