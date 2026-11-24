@@ -16,6 +16,11 @@ def make_engine(url: str) -> Engine:
         url = "postgresql://" + url[len("postgres://") :]
     if url.startswith("postgresql://"):
         url = "postgresql+psycopg://" + url[len("postgresql://") :]
+    # Neon and some managed hosts append channel_binding; psycopg URI parsing
+    # is happier without it when sslmode=require is already set.
+    url = url.replace("&channel_binding=require", "").replace("?channel_binding=require&", "?").replace("?channel_binding=require", "")
+    if "sslmode=" not in url and "neon.tech" in url:
+        url += ("&" if "?" in url else "?") + "sslmode=require"
     return create_engine(url, future=True)
 
 

@@ -1,0 +1,40 @@
+# Retriever API on Render (Docker). Neon is external — set DATABASE_URL in the dashboard.
+services:
+  - type: web
+    name: retriever-api
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DRY_RUN
+        value: "true"
+      - key: WEB_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DEMO_PASSWORD
+        sync: false
+      - key: HITPAY_API_KEY
+        sync: false
+      - key: HITPAY_WEBHOOK_SALT
+        sync: false
+      - key: HITPAY_WEBHOOK_URL
+        sync: false
+      - key: HITPAY_ENV
+        value: sandbox
+      - key: HITPAY_API_BASE
+        value: https://api.sandbox.hit-pay.com
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: XAI_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: grok-4-fast
+      - key: LLM_BASE_URL
+        value: https://api.x.ai/v1
