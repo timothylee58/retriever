@@ -12,6 +12,10 @@ def _schema_path() -> Path:
 
 
 def make_engine(url: str) -> Engine:
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://") :]
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://") :]
     return create_engine(url, future=True)
 
 

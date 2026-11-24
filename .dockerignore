@@ -1,0 +1,13 @@
+.venv
+node_modules
+workers/retriever-api/node_modules
+web/node_modules
+web/.next
+demo
+.git
+.media
+assets
+**/__pycache__
+**/*.webm
+.env
+.env.*

@@ -1,0 +1,27 @@
+{
+  "name": "retriever",
+  "version": "1.0.0",
+  "description": "Retriever gets Singapore and Malaysia SMEs paid. It turns a failed card or an expired QR into a fresh PayNow or DuitNow link, matches transfers that arrived without a reference, and warns when a cash gap is cheaper to close with a small early-payment discount than to finance.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "deploy:api": "wrangler deploy --config workers/retriever-api/wrangler.jsonc",
+    "test": "cd api && pytest -q"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/timothylee58/retriever.git"
+  },
+  "keywords": [],
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/timothylee58/retriever/issues"
+  },
+  "homepage": "https://github.com/timothylee58/retriever#readme",
+  "devDependencies": {
+    "@cloudflare/config": "^0.32.1",
+    "wrangler": "^4.167.0"
+  }
+}

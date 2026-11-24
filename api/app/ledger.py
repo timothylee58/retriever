@@ -169,6 +169,7 @@ def _create_payment_request(conn, settings: Settings, **kwargs) -> dict:
                 "amount": f"{kwargs['amount_minor'] / 100:.2f}",
                 "currency": kwargs["currency"],
                 "reference_number": kwargs["ref"],
+                **({"webhook": settings.hitpay_webhook_url} if settings.hitpay_webhook_url else {}),
                 # The sandbox rejects grabpay and shopeepay on this account.
                 # Send the chosen fallback only.
                 "payment_methods": [_HITPAY_METHOD.get(kwargs["methods"][0], kwargs["methods"][0])],

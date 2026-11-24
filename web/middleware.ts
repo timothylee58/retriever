@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  if (path === "/" || path.startsWith("/login")) {
+  if (path === "/" || path.startsWith("/login") || path.startsWith("/demo-reel") || path.startsWith("/demo-judges")) {
     return NextResponse.next();
   }
   const expected = process.env.DEMO_PASSWORD ?? "retriever-demo";

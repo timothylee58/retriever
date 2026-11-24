@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from datetime import datetime
 from uuid import UUID
 
@@ -6,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.config import get_settings
-from app.db import make_engine
+from app.db import apply_schema, make_engine
 from app.ledger import (
     accept_webhook,
     churn_sweep,
@@ -24,10 +25,18 @@ from app.ledger import (
 
 settings = get_settings()
 engine = make_engine(settings.database_url)
-app = FastAPI(title="Retriever")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    apply_schema(engine)
+    yield
+
+
+app = FastAPI(title="Retriever", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[origin.strip() for origin in settings.web_origin.split(",") if origin.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -1,0 +1,10 @@
+.venv
+web/node_modules
+web/.next
+demo
+.git
+**/__pycache__
+.media
+assets
+.pytest_cache
+**/*.webm
